@@ -31,9 +31,19 @@ if (isset($_GET['port']) && !empty($_GET['port']) && is_string($_GET['port']) &&
 	$filter['port'] = (int) $_GET['port'];
 endif;
 $filter['protocol']		= isset($_GET['protocol']) && !empty($_GET['protocol']) && is_string($_GET['protocol'])	?	$_GET['protocol']	:	'';
+
 $filter['state']		= isset($_GET['state']) && !empty($_GET['state']) && is_string($_GET['state'])	?	$_GET['state']	:	'';
 $filter['service']		= isset($_GET['service']) && !empty($_GET['service']) && is_string($_GET['service'])	?	$_GET['service']	:	'';
 $filter['banner']		= isset($_GET['banner']) && !empty($_GET['banner'])	&& is_string($_GET['banner'])	?	$_GET['banner']	:	'';
+
+$filter['time'] = 'data_' . $_GET['year'];
+if (strlen($_GET['month']) == 1) {
+	$filter['time'] .= '0' . $_GET['month'];
+} else {
+	$filter['time'] .= $_GET['month'];
+}
+$filter['time'] .= $_GET['day'];
+
 $filter['exact-match']	= isset($_GET['exact-match']) && (int) $_GET['exact-match'] === 1 ?	1	:	0;
 $filter['text']			= isset($_GET['text']) && !empty($_GET['text'])	&& is_string($_GET['text'])	?	$_GET['text']	:	'';
 $filter['page']			= isset($_GET['page']) && (int) $_GET['page'] > 1	?	(int) $_GET['page']	:	1;
