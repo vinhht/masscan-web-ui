@@ -1,4 +1,6 @@
 <?php
+session_start();
+
 function pre_var_dump($var)
 {
     echo "<pre>";
@@ -11,7 +13,7 @@ function getPdo()
         $db = new PDO(DB_DRIVER.":host=".DB_HOST.";dbname=".DB_DATABASE, DB_USERNAME, DB_PASSWORD);
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         try {
-            $q = "SELECT 1 FROM data";
+            $q = "SELECT * FROM information_schema.TABLES";
             $stmt = $db->query($q);
             $tmp = $stmt->fetch($q);
             return $db;
@@ -34,6 +36,17 @@ function getPdo()
         exit();
     }
 }
+
+function tableExists($pdo, $table) {
+    try {
+        $result = $pdo->query("SELECT 1 FROM $table LIMIT 1");
+    } catch (Exception $e){
+        return FALSE;
+    }
+
+    return $result != FALSE;
+}
+
 function browse($filter, $export = false)
 {
     $db = getPdo();
@@ -46,7 +59,20 @@ function browse($filter, $export = false)
     $from = ($page - 1) * $records_per_page;
     $q1 = "SELECT ip AS ipaddress, port_id, protocol, state, reason, service, banner, title";
     $q2 = "SELECT COUNT(*) as total_records";
-    $q = " FROM data WHERE 1 = 1";
+
+    // $filter['time'] = 'data_XXXXXXXX'
+    if (strlen($filter['time']) > 5) {
+        $_SESSION['id'] = $filter['time'];
+    } else {
+        $filter['time'] = $_SESSION['id'];
+    }
+
+    // Check table exists or not
+    if (!tableExists($db, $filter['time'])) {
+        return '';
+    }
+
+    $q = " FROM " . $filter['time'] . " WHERE 1 = 1";
 
     if (!empty($filter['ip'])):
         list($start_ip, $end_ip) = getStartAndEndIps($filter['ip']);
@@ -91,6 +117,7 @@ function browse($filter, $export = false)
                 OR port_id = \"" . (int) $filter['text'] . "%\")";
         }
     endif;
+
     if (isset($start_ip)):
         $q3 = " ORDER BY ip ASC";
     else:
@@ -148,4 +175,45 @@ function getStartAndEndIps($ip)
         endif;
     endfor;
     return array(ip2long($start_ip), ip2long($end_ip));
+}
+
+function listTables()
+{
+    $db = getPdo();
+    $q = "SHOW TABLES FROM masscan";
+    $stmt = $db->query($q);
+    $stmt->execute();
+    $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    return $tables;
+}
+
+function createTable($table_name)
+{
+    try {
+        $db = getPdo();
+        $sql = "DROP TABLE IF EXISTS `" . $table_name . "`;
+
+        CREATE TABLE IF NOT EXISTS `" . $table_name . "` (
+            `id` bigint(20) unsigned NOT NULL,
+            `ip` int(10) unsigned NOT NULL DEFAULT '0',
+            `port_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
+            `scanned_ts` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `protocol` enum('tcp','udp') NOT NULL,
+            `state` varchar(10) NOT NULL DEFAULT '',
+            `reason` varchar(255) NOT NULL DEFAULT '',
+            `reason_ttl` int(10) unsigned NOT NULL DEFAULT '0',
+            `service` varchar(100) NOT NULL DEFAULT '',
+            `banner` text NOT NULL,
+            `title` text NOT NULL
+        ) ENGINE=MyISAM  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;
+
+        ALTER TABLE `" . $table_name . "` ADD PRIMARY KEY (`id`), ADD KEY `scanned_ts` (`scanned_ts`), ADD KEY `ip` (`ip`), ADD FULLTEXT KEY `banner` (`banner`,`title`);
+        ALTER TABLE `" . $table_name . "` MODIFY `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=1;";
+
+        $db->exec($sql);
+
+    } catch (PDOException $e) {
+        echo $e->getMessage();
+    }
 }
