@@ -46,33 +46,39 @@ if (!extension_loaded('simplexml')) {
 $start_ts = time();
 require dirname(__FILE__).'/config.php';
 if (!isset($argv[1])):
-	die('Please provide a file name to import!'."\n");
+    die('Please provide a file name to import!'."\n");
 endif;
 $tmp = pathinfo($argv[1]);
 if ($tmp['dirname'] == "."):
-	$filepath = dirname(__FILE__).'/'.$argv[1];
+    $filepath = dirname(__FILE__).'/'.$argv[1];
 else:
-	$filepath = $argv[1];
+    $filepath = $argv[1];
 endif;
 if (!is_file($filepath)):
-	echo "File:".$filepath;
-	echo PHP_EOL;
-	echo 'File does not exist!';
+    echo "File:".$filepath;
     echo PHP_EOL;
-	exit;
+    echo 'File does not exist!';
+    echo PHP_EOL;
+    exit;
 endif;
+
+$tables = listTables();
+print_r($tables);
+
+$table_query = $tables[sizeof($tables)-1];
+
 do {
-	echo PHP_EOL;
-	echo "Do you want to clear the database before importing (yes/no)?: ";
-	$handle = fopen ("php://stdin","r");
-	$input = fgets($handle);
+    echo PHP_EOL;
+    echo "Do you want to clear the table " . $table_query . " before importing (yes/no)?: ";
+    $handle = fopen ("php://stdin","r");
+    $input = fgets($handle);
 } while (!in_array(trim($input), array('yes', 'no')));
 $db = getPdo();
 if (trim(strtolower($input)) == 'yes'):
-	echo PHP_EOL;
-	echo "Clearing the db";
-	echo PHP_EOL;
-    $db->exec("TRUNCATE TABLE data");
+    echo PHP_EOL;
+    echo "Clearing the db";
+    echo PHP_EOL;
+    $db->exec("TRUNCATE TABLE " . $table_query);
 endif;
 echo "Reading file";
 echo PHP_EOL;
@@ -83,12 +89,17 @@ $xml = simplexml_load_string($content, 'SimpleXMLElement', LIBXML_COMPACT | LIBX
 if ($xml === false):
     die('There is a problem with this xml file?!'.PHP_EOL);
 endif;
-$total		= 0;
-$inserted	= 0;
+$total      = 0;
+$inserted   = 0;
 echo "Processing data (This may take some time depending on file size)";
 echo PHP_EOL;
-$q = "INSERT INTO data (ip, port_id, scanned_ts, protocol, state, reason, reason_ttl, service, banner, title) VALUES (:ip, :port, :scanned_ts, :protocol, :state, :reason, :reason_ttl, :service, :banner, :title)";
+
+$tables = listTables();
+$table_query = $tables[sizeof($tables)-1];
+
+$q = "INSERT INTO " . $table_query . "(ip, port_id, scanned_ts, protocol, state, reason, reason_ttl, service, banner, title) VALUES (:ip, :port, :scanned_ts, :protocol, :state, :reason, :reason_ttl, :service, :banner, :title)";
 $stmt = $db->prepare($q);
+#$stmt->bindParam(':table_query', $table_query, PDO::PARAM_STR);
 $stmt->bindParam(':ip', $ip, PDO::PARAM_INT);
 $stmt->bindParam(':port', $port, PDO::PARAM_INT);
 $stmt->bindParam(':scanned_ts', $scanned_ts);
@@ -103,9 +114,7 @@ $stmt->bindParam(':title', $title, PDO::PARAM_STR);
 foreach ($xml->host as $host):
 
     foreach ($host->ports as $p):
-        $ip         = sprintf('%u', ip2long($host->address['addr']));
-		$ts         = (int) $host['endtime'];
-		$scanned_ts = date("Y-m-d H:i:s", $ts);
+
         $port       = (int) $p->port['portid'];
         $protocol   = (string) $p->port['protocol'];
         if (isset($p->port->service)):
@@ -130,20 +139,54 @@ foreach ($xml->host as $host):
             $banner = '';
             $title = '';
         endif;
+
         $state      = (string) $p->port->state['state'];
         $reason     = (string) $p->port->state['reason'];
         $reason_ttl = (int) $p->port->state['reason_ttl'];
         $total++;
+
+        $ip         = sprintf('%u', ip2long($host->address['addr']));
+        $ts         = (int) $host['endtime'];
+        $scanned_ts = date("Y-m-d H:i:s", $ts);
+        
+        $table_name = "data_" . date("Ymd", $ts);
+
+        if (!in_array($table_name, $tables)) {
+            echo "Create New Table\n";
+            createTable($table_name);
+            $tables = listTables();
+            $table_query = $table_name;
+
+            $q = "INSERT INTO " . $table_query . "(ip, port_id, scanned_ts, protocol, state, reason, reason_ttl, service, banner, title) VALUES (:ip, :port, :scanned_ts, :protocol, :state, :reason, :reason_ttl, :service, :banner, :title)";
+            $stmt = $db->prepare($q);
+            #$stmt->bindParam(':table_query', $table_query, PDO::PARAM_STR);
+            $stmt->bindParam(':ip', $ip, PDO::PARAM_INT);
+            $stmt->bindParam(':port', $port, PDO::PARAM_INT);
+            $stmt->bindParam(':scanned_ts', $scanned_ts);
+            $stmt->bindParam(':protocol', $protocol, PDO::PARAM_STR);
+            $stmt->bindParam(':state', $state, PDO::PARAM_STR);
+            $stmt->bindParam(':reason', $reason, PDO::PARAM_STR);
+            $stmt->bindParam(':reason_ttl', $reason_ttl, PDO::PARAM_INT);
+            $stmt->bindParam(':service', $service, PDO::PARAM_STR);
+            $stmt->bindParam(':banner', $banner, PDO::PARAM_STR);
+            $stmt->bindParam(':title', $title, PDO::PARAM_STR);
+
+            if ($stmt->execute()):
+                $inserted++;
+            endif;
+
+            continue;
+        }
         if ($stmt->execute()):
             $inserted++;
         endif;
-	endforeach;
+    endforeach;
 
 endforeach;
 if (DB_DRIVER == 'pgsql') {
     $q = "UPDATE data SET searchtext = to_tsvector('english', title || '' || banner || '' || service || '' || protocol || '' || port_id)";
     $db->exec($q);
-}
+} 
 $end_ts = time();
 echo PHP_EOL;
 echo "Summary:";
