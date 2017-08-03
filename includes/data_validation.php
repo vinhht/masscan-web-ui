@@ -42,8 +42,11 @@ if (strlen($_GET['month']) == 1) {
 } else {
 	$filter['time'] .= $_GET['month'];
 }
-$filter['time'] .= $_GET['day'];
-
+if ($_GET['day'] == 1) {
+	$filter['time'] .= '0' . $_GET['day'];
+} else {
+	$filter['time'] .= $_GET['day'];
+}
 $filter['exact-match']	= isset($_GET['exact-match']) && (int) $_GET['exact-match'] === 1 ?	1	:	0;
 $filter['text']			= isset($_GET['text']) && !empty($_GET['text'])	&& is_string($_GET['text'])	?	$_GET['text']	:	'';
 $filter['page']			= isset($_GET['page']) && (int) $_GET['page'] > 1	?	(int) $_GET['page']	:	1;
