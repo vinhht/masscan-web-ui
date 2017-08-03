@@ -11,7 +11,7 @@
                     $queries = explode(";", trim(trim($sql), ";"));
                     if (!empty($queries)):
                         $error = false;
-                        $db = new PDO(DB_DRIVER.":host=".DB_HOST.";dbname=".DB_DATABASE, DB_USERNAME, DB_PASSWORD);
+                        $db = new PDO(DB_DRIVER.":host=".DB_HOST.";port=3306;dbname=".DB_DATABASE, DB_USERNAME, DB_PASSWORD);
                         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
                         foreach ($queries as $q):
