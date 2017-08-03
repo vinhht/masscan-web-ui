@@ -118,7 +118,7 @@ table th.banner {}
 table th.port {width:60px; text-align: center; }
 table th.service {width:80px; text-align: center; }
 table th.protocol {width:70px; text-align: center; }
-table th.time {width:90px; text-align: center; }
+table th.time {width:100px; text-align: center; }
 
 table td.ip { text-align: center; }
 table td.banner {}
