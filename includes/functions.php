@@ -10,7 +10,7 @@ function pre_var_dump($var)
 function getPdo()
 {
     try {
-        $db = new PDO(DB_DRIVER.":host=".DB_HOST.";dbname=".DB_DATABASE, DB_USERNAME, DB_PASSWORD);
+        $db = new PDO(DB_DRIVER.":host=".DB_HOST.";port=3306;dbname=".DB_DATABASE, DB_USERNAME, DB_PASSWORD);
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         try {
             $q = "SELECT * FROM information_schema.TABLES";
@@ -57,8 +57,6 @@ function browse($filter, $export = false)
         $page = 1;
     endif;
     $from = ($page - 1) * $records_per_page;
-    $q1 = "SELECT ip AS ipaddress, port_id, protocol, state, reason, service, banner, title";
-    $q2 = "SELECT COUNT(*) as total_records";
 
     // $filter['time'] = 'data_XXXXXXXX'
     if (strlen($filter['time']) > 5) {
@@ -67,59 +65,86 @@ function browse($filter, $export = false)
         $filter['time'] = $_SESSION['id'];
     }
 
+    $arr = array();
     // Check table exists or not
-    if (!tableExists($db, $filter['time'])) {
+    if (($filter['time'] != 'data_allallall') && (!tableExists($db, $filter['time']))) {
         return '';
     }
+    if ($filter['time'] != 'data_allallall') {
+        $arr[] = 'data';
+        $arr[] = $filter['time'];
+    } else {
+        $arr = listTables();
+    }
 
-    $q = " FROM " . $filter['time'] . " WHERE 1 = 1";
+    $len_arr = sizeof($arr);
+    if ($len_arr <= 1)
+        return '';
 
-    if (!empty($filter['ip'])):
-        list($start_ip, $end_ip) = getStartAndEndIps($filter['ip']);
-        $q .= " AND (ip >= $start_ip AND ip <= $end_ip)";
-    endif;
-    if (isset($filter['port']) && (int) $filter['port'] > 0 && (int) $filter['port'] <= 65535):
-        $q .= " AND port_id = " . (int) $filter['port'];
-    endif;
-    if (!empty($filter['protocol'])):
-        $q .= " AND protocol = '" . $filter['protocol'] . "'";
-    endif;
-    if (!empty($filter['state'])):
-        $q .= " AND state = '" . $filter['state'] . "'";
-    endif;
-    if (!empty($filter['service'])):
-        $q .= " AND service = '" . $filter['service'] . "'";
-    endif;
-    if (!empty($filter['banner'])):
-        if ((int)$filter['exact-match'] === 1):
+    $query1 = $query2 = '';
+
+    for ($i = 1; $i < $len_arr; $i++) {
+
+        $q1 = "SELECT ip AS ipaddress, port_id, protocol, state, reason, service, banner, title, scanned_ts";
+        $q2 = "SELECT DISTINCT * ";
+
+        $q = " FROM " . $arr[$i] . " WHERE 1 = 1";
+
+        if (!empty($filter['ip'])):
+            list($start_ip, $end_ip) = getStartAndEndIps($filter['ip']);
+            $q .= " AND (ip >= $start_ip AND ip <= $end_ip)";
+        endif;
+        if (isset($filter['port']) && (int) $filter['port'] > 0 && (int) $filter['port'] <= 65535):
+            $q .= " AND port_id = " . (int) $filter['port'];
+        endif;
+        if (!empty($filter['protocol'])):
+            $q .= " AND protocol = '" . $filter['protocol'] . "'";
+        endif;
+        if (!empty($filter['state'])):
+            $q .= " AND state = '" . $filter['state'] . "'";
+        endif;
+        if (!empty($filter['service'])):
+            $q .= " AND service = '" . $filter['service'] . "'";
+        endif;
+        if (!empty($filter['banner'])):
+            if ((int)$filter['exact-match'] === 1):
+                if (DB_DRIVER == 'pgsql') {
+                    $q .= " AND (banner LIKE '%" . $filter['banner'] . "' OR title LIKE '%" . $filter['banner'] . "%')";
+                } else {
+                    $q .= " AND (banner LIKE BINARY \"%" . $filter['banner'] . "%\" OR title LIKE BINARY \"%" . $filter['banner'] . "%\")";
+                }
+            else:
+                if (DB_DRIVER == 'pgsql') {
+                    $banner = implode(' | ', explode(" ", $filter['banner']));
+                    $q .= " AND searchtext @@ to_tsquery('".$banner."')";
+                } else {
+                    $q .= " AND match(title, banner) AGAINST (\"" . $filter['banner'] . "\" IN NATURAL LANGUAGE MODE)";
+                }
+            endif;
+        endif;
+        if (!empty($filter['text'])):
             if (DB_DRIVER == 'pgsql') {
-                $q .= " AND (banner LIKE '%" . $filter['banner'] . "' OR title LIKE '%" . $filter['banner'] . "%')";
-            } else {
-                $q .= " AND (banner LIKE BINARY \"%" . $filter['banner'] . "%\" OR title LIKE BINARY \"%" . $filter['banner'] . "%\")";
-            }
-        else:
-            if (DB_DRIVER == 'pgsql') {
-                $banner = implode(' | ', explode(" ", $filter['banner']));
+                $banner = implode(' | ', explode(" ", $filter['text']));
                 $q .= " AND searchtext @@ to_tsquery('".$banner."')";
             } else {
-                $q .= " AND match(title, banner) AGAINST (\"" . $filter['banner'] . "\" IN NATURAL LANGUAGE MODE)";
+                $q .= " AND (match(title, banner) AGAINST (\"" . $filter['text'] . "\" IN NATURAL LANGUAGE MODE)
+                    OR service = \"" . $filter['text'] . "%\"
+                    OR protocol = \"" . $filter['text'] . "%\"
+                    OR port_id = \"" . (int) $filter['text'] . "%\")";
             }
         endif;
-    endif;
-    if (!empty($filter['text'])):
-        if (DB_DRIVER == 'pgsql') {
-            $banner = implode(' | ', explode(" ", $filter['text']));
-            $q .= " AND searchtext @@ to_tsquery('".$banner."')";
-        } else {
-            $q .= " AND (match(title, banner) AGAINST (\"" . $filter['text'] . "\" IN NATURAL LANGUAGE MODE)
-                OR service = \"" . $filter['text'] . "%\"
-                OR protocol = \"" . $filter['text'] . "%\"
-                OR port_id = \"" . (int) $filter['text'] . "%\")";
+
+        $query1 .= $q1 . $q;
+        $query2 .= $q2 . $q;
+
+        if ($i != $len_arr - 1) {
+            $query1 .= " UNION ALL ";
+            $query2 .= " UNION ALL ";
         }
-    endif;
+    }
 
     if (isset($start_ip)):
-        $q3 = " ORDER BY ip ASC";
+        $q3 = " ORDER BY ipaddress ASC";
     else:
         $q3 = " ORDER BY scanned_ts DESC";
     endif;
@@ -128,8 +153,12 @@ function browse($filter, $export = false)
     else:
         $q4 = "";
     endif;
+
+    $query1 = "SELECT * FROM (" . $query1 . ") a" . $q3 . $q4;
+    $query2 = "SELECT COUNT(*) as total_records FROM (" . $query2 . ") b";
+
     try {
-        $stmt = $db->query($q1 . $q . $q3 . $q4);
+        $stmt = $db->query($query1);
     }
     catch(PDOException $ex) {
         echo "An Error occured!";
@@ -140,7 +169,7 @@ function browse($filter, $export = false)
     if ($export) {
         return $data;
     }
-    $tmp2 = $db->query($q2 . $q);
+    $tmp2 = $db->query($query2);
     $total = $tmp2->fetch(PDO::FETCH_ASSOC);
     $to = $from + $records_per_page < $total['total_records'] ? $from + $records_per_page : $total['total_records'];
     $pages = $total ['total_records'] > 1 ? ceil($total ['total_records'] / $records_per_page) : 0;
