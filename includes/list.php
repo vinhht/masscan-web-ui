@@ -41,6 +41,7 @@
             <th class="port">Port</th>
             <th class="service">Service</th>
             <th class="protocol text-center">Protocol</th>
+            <th class="time">Time</th>
         </tr>
     </thead>
     <tbody>
@@ -66,11 +67,12 @@
                     <?php endif; ?>
                 </td>
                 <td class="protocol"><?php echo htmlentities($r['protocol']); ?></td>
+                <td class="time"><?php echo htmlentities($r['scanned_ts']); ?></td>
             </tr>
         <?php endforeach; ?>
     <?php else: ?>
         <tr>
-            <td colspan="5" class="text-center">
+            <td colspan="6" class="text-center">
                 <p class="alert alert-danger">No results</p>
             </td>
         </tr>
