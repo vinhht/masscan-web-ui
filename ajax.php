@@ -20,6 +20,7 @@ if (!empty($results)): ?>
 				<th class="port">Port</th>
 				<th class="service">Service</th>
 				<th class="protocol">Protocol</th>
+				<th class="time">Time</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -41,6 +42,7 @@ if (!empty($results)): ?>
 				<?php endif; ?>
 			</td>
 			<td><?php echo htmlentities($r['protocol']);?></td>
+			<td><?php echo htmlentities($r['time']);?></td>
 		</tr>
 	<?php endforeach; ?>
 	</table>
