@@ -144,7 +144,7 @@ function browse($filter, $export = false)
     }
 
     if (isset($start_ip)):
-        $q3 = " ORDER BY ipaddress ASC";
+        $q3 = " ORDER BY ipaddress ASC, scanned_ts DESC";
     else:
         $q3 = " ORDER BY scanned_ts DESC";
     endif;
