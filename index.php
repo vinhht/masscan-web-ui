@@ -78,6 +78,7 @@ include dirname(__FILE__).'/includes/header.php';
                         <label for="Time">YEAR </label>
                         <!--echo '<option value='.$tables[$i].'>' . $tables[$i] . '</option>';-->
                             <select class="form-control select.input-sm" id="pTime" name="year">
+                            <option value='all' selected>All</option>
                                 <?php
                                     for ($i = 2017; $i <= 2020; $i++) {
                                         echo "<option value='$i'>$i</option>";
@@ -88,6 +89,7 @@ include dirname(__FILE__).'/includes/header.php';
                     <div class="col-md-1">
                         <label for="Time">MONTH </label>
                             <select class="form-control select.input-sm" id="pTime" name="month">
+                            <option value='all' selected>All</option>option>
                                 <?php
                                     for ($i = 1; $i <= 12; $i++) {
                                         echo "<option value='$i'>$i</option>";
@@ -98,6 +100,7 @@ include dirname(__FILE__).'/includes/header.php';
                     <div class="col-md-1">
                         <label for="Time">DAY </label>
                             <select class="form-control select.input-sm" id="pTime" name="day">
+                                <option value='all' selected>All</option>
                                 <?php
                                     for ($i = 1; $i <= 31; $i++) {
                                         echo "<option value='$i'>$i</option>";
