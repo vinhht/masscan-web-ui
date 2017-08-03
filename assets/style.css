@@ -118,16 +118,18 @@ table th.banner {}
 table th.port {width:60px; text-align: center; }
 table th.service {width:80px; text-align: center; }
 table th.protocol {width:70px; text-align: center; }
+table th.time {width:90px; text-align: center; }
 
 table td.ip { text-align: center; }
 table td.banner {}
 table td.port { text-align: center; }
 table td.service { text-align: center; }
 table td.protocol { text-align: center; }
+table td.time { text-align: center; }
 table td { padding: 10px !important; vertical-align: middle !important; }
 
 .ip { font-family: 'Open Sans Semi', arial, sans-serif !important;  font-size:12px !important; }
-.port, .service, .protocol { font-family: 'Open Sans Semi', arial, sans-serif !important; }
+.port, .service, .protocol, .time { font-family: 'Open Sans Semi', arial, sans-serif !important; }
 img#ajax-loader-pagination { margin:10px 15px 0 0; display:none;}
 
 .container.errorPage { min-height:540px; }
