@@ -37,6 +37,60 @@ function getPdo()
     }
 }
 
+function LastDateofMonth($month, $year) {
+    switch ($month) {
+        case 4:
+        case 6:
+        case 9:
+        case 11:
+            return 30;
+        case 2:
+            if($year % 4 == 0) {
+                if($year % 100 == 0) {
+                    if($year % 400 == 0)
+                        return 29;
+                    else
+                        return 28;
+                } else {
+                    return 29;
+                }
+            } else {
+                return 28;
+            }
+        default:
+            return 31;
+    }
+}
+
+function checkTabletime($table1, $table2) {
+    $year1 = (int)(substr($table1, 5, 4));
+    $month1 = (int)substr($table1, 9, 2);
+    $day1 = (int)substr($table1, 11, 2);
+
+    $year2 = (int)substr($table2, 5, 4);
+    $month2 = (int)substr($table2, 9, 2);
+    $day2 = (int)substr($table2, 11, 2);
+
+    // print $day1 . " " . $month1 . " " . $year1;
+    // print $day2 . " " . $month2 . " " . $year2;
+
+    if($year2 == $year1) {
+        if($month1 == $month2 && $day2 - $day1 == 1) {
+            return True;
+        } elseif($month2 - $month1 == 1) {
+            if ($day2 == 1 && $day1 == LastDateofMonth($month1, $year1)) {
+                return True;
+            }
+        }
+    } elseif ($year2 - $year1 == 1) {
+        if($day1 == 31 && $month1 == 12 && $day2 = 1 && $month2 == 1) {
+            return True;
+        }
+    }
+
+    return False;
+}
+
 function tableExists($pdo, $table) {
     try {
         $result = $pdo->query("SELECT 1 FROM $table LIMIT 1");
