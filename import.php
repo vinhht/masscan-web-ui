@@ -192,19 +192,21 @@ $sizeTable = sizeof($tables);
 
 $count = 0;
 // Delete duplicate records
-if ($sizeTable > 2 && checkTabletime($tables[$sizeTable-2], $table_query)) {
-    $table1 = $table_query;
-    $table2 = $tables[$sizeTable-2];
+if ($sizeTable > 2) {
+    if (checkTabletime($tables[$sizeTable-2], $table_query)) {
+        $table1 = $table_query;
+        $table2 = $tables[$sizeTable-2];
 
-    $q = "DELETE FROM ".$table1." WHERE EXISTS (SELECT * FROM ".$table2." A WHERE A.ip=".$table1.".ip AND A.port_id=".$table1.".port_id AND A.protocol=".$table1.".protocol AND A.state=".$table1.".state AND A.service=".$table1.".service AND A.banner=".$table1.".banner AND A.title=".$table1.".title)";
+        $q = "DELETE FROM ".$table1." WHERE EXISTS (SELECT * FROM ".$table2." A WHERE A.ip=".$table1.".ip AND A.port_id=".$table1.".port_id AND A.protocol=".$table1.".protocol AND A.state=".$table1.".state AND A.service=".$table1.".service AND A.banner=".$table1.".banner AND A.title=".$table1.".title)";
 
-    $stmt = $db->prepare($q);
-    if ($stmt->execute()){
-        $count = $stmt->rowCount();
-        $inserted -= $count;
+        $stmt = $db->prepare($q);
+        if ($stmt->execute()){
+            $count = $stmt->rowCount();
+            $inserted -= $count;
+        }
+    } else {
+        exit();
     }
-} else {
-    exit();
 }
 
 $end_ts = time();
