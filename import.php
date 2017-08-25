@@ -187,12 +187,33 @@ if (DB_DRIVER == 'pgsql') {
     $q = "UPDATE data SET searchtext = to_tsvector('english', title || '' || banner || '' || service || '' || protocol || '' || port_id)";
     $db->exec($q);
 } 
+
+$sizeTable = sizeof($tables);
+
+$count = 0;
+// Delete duplicate records
+if ($sizeTable > 2 && checkTabletime($tables[$sizeTable-2], $table_query)) {
+    $table1 = $table_query;
+    $table2 = $tables[$sizeTable-2];
+
+    $q = "DELETE FROM ".$table1." WHERE EXISTS (SELECT * FROM ".$table2." A WHERE A.ip=".$table1.".ip AND A.port_id=".$table1.".port_id AND A.protocol=".$table1.".protocol AND A.state=".$table1.".state AND A.service=".$table1.".service AND A.banner=".$table1.".banner AND A.title=".$table1.".title)";
+
+    $stmt = $db->prepare($q);
+    if ($stmt->execute()){
+        $count = $stmt->rowCount();
+        $inserted -= $count;
+    }
+} else {
+    exit();
+}
+
 $end_ts = time();
 echo PHP_EOL;
 echo "Summary:";
 echo PHP_EOL;
 echo "Total records:".$total."\n";
 echo "Inserted records:".$inserted."\n";
+echo "Deleted duplicate records:".$count."\n";
 $secs = $end_ts - $start_ts;
 echo "Took about:".seconds2human($secs);
 echo PHP_EOL;
