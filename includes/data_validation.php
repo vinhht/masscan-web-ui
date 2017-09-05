@@ -42,7 +42,7 @@ if (strlen($_GET['month']) == 1) {
 } else {
 	$filter['time'] .= $_GET['month'];
 }
-if ($_GET['day'] == 1) {
+if (strlen($_GET['day']) == 1) {
 	$filter['time'] .= '0' . $_GET['day'];
 } else {
 	$filter['time'] .= $_GET['day'];
